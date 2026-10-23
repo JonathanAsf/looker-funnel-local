@@ -91,37 +91,64 @@ export const FunnelViz: React.FC<FunnelVizProps> = ({ data, config }) => {
   const isRight = config.labelPosition === "right";
   const showLabels = config.labelPosition !== "none";
 
-  // Componente SVG customizado para calcular a posição lateral garantida
-  const renderCustomOuterLabel = (props: any) => {
-    const { x, y, width, height, index } = props;
-    const item = data[index];
-    if (!item || !showLabels) return null;
-
-    const labelText = formatText(item);
-    const midY = y + height / 2;
-
-    // Se for na esquerda, posiciona antes da borda esquerda do trapézio; se for na direita, após a borda direita
-    const targetX = isLeft ? x - 15 : x + width + 15;
-    const textAnchor = isLeft ? "end" : "start";
-
-    return (
-      <text
-        x={targetX}
-        y={midY}
-        fill={config.textColor || "#1F2937"}
-        fontSize="12"
-        fontWeight="600"
-        textAnchor={textAnchor}
-        dominantBaseline="middle"
-        style={{
-          fontFamily:
-            "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-        }}
-      >
-        {labelText}
-      </text>
-    );
-  };
+  // Coluna de legendas calculada dinamicamente
+  const LabelsColumn = (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-around",
+        height: "100%",
+        minWidth: "220px",
+        maxWidth: "320px",
+        padding: "16px 12px",
+        boxSizing: "border-box",
+        textAlign: isLeft ? "right" : "left",
+      }}
+    >
+      {data.map((item, idx) => (
+        <div
+          key={idx}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            overflow: "hidden",
+            whiteSpace: "nowrap",
+            textOverflow: "ellipsis",
+          }}
+        >
+          <span
+            style={{
+              color: config.textColor || "#1F2937",
+              fontSize: "13px",
+              fontWeight: 600,
+              fontFamily:
+                "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+            }}
+            title={item.name}
+          >
+            {formatText(item)}
+          </span>
+          {config.percentType !== "none" && (
+            <span
+              style={{
+                fontSize: "11px",
+                color: "#6B7280",
+                marginTop: "2px",
+                fontFamily:
+                  "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+              }}
+            >
+              {config.percentType === "top"
+                ? `${item.pctOfTop} do início`
+                : `${item.pctOfPrev} da etapa anterior`}
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <div
@@ -130,32 +157,29 @@ export const FunnelViz: React.FC<FunnelVizProps> = ({ data, config }) => {
         height: "100%",
         minHeight: "450px",
         display: "flex",
+        flexDirection: "row",
         justifyContent: "center",
-        alignItems: "center",
+        alignItems: "stretch",
         boxSizing: "border-box",
-        padding: "10px",
+        padding: "10px 20px",
       }}
     >
+      {/* Se for Esquerda, a coluna de textos entra antes do gráfico */}
+      {showLabels && isLeft && LabelsColumn}
+
+      {/* Área central com o funil Recharts */}
       <div
         style={{
-          width: "100%",
-          maxWidth: "950px",
+          flex: 1,
+          maxWidth: "750px",
           height: "100%",
           minHeight: "450px",
         }}
       >
         <ResponsiveContainer width="100%" height="100%">
-          <FunnelChart
-            margin={{
-              top: 20,
-              right: isRight ? 220 : 40,
-              bottom: 20,
-              left: isLeft ? 220 : 40,
-            }}
-          >
+          <FunnelChart margin={{ top: 20, right: 10, bottom: 20, left: 10 }}>
             <Tooltip content={<CustomTooltip />} />
             <Funnel dataKey="value" data={data} isAnimationActive={false}>
-              {/* Valores numéricos centrais */}
               {config.showInnerValues && (
                 <LabelList
                   position="center"
@@ -169,13 +193,13 @@ export const FunnelViz: React.FC<FunnelVizProps> = ({ data, config }) => {
                   }}
                 />
               )}
-
-              {/* Rótulo lateral (esquerda ou direita) */}
-              {showLabels && <LabelList content={renderCustomOuterLabel} />}
             </Funnel>
           </FunnelChart>
         </ResponsiveContainer>
       </div>
+
+      {/* Se for Direita, a coluna de textos entra depois do gráfico */}
+      {showLabels && isRight && LabelsColumn}
     </div>
   );
 };
