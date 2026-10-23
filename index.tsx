@@ -10,13 +10,12 @@ const defaultColors = ['#8884d8', '#83a6ed', '#8dd1e1', '#82ca9d', '#a4de6c', '#
 looker.plugins.visualizations.add({
   id: "recharts_custom_funnel",
   label: "Funil Recharts",
-  
-  // As opções aqui viram controles interativos na janela "Editar" do Looker
+
   options: {
     labelPosition: {
       type: "string",
-      label: "Posição dos Nomes das Etapas",
-      section: "Rótulos",
+      label: "Posição dos Rótulos",
+      section: "Rotulos",
       order: 1,
       display: "select",
       values: [
@@ -29,13 +28,13 @@ looker.plugins.visualizations.add({
     percentType: {
       type: "string",
       label: "Cálculo de Porcentagem",
-      section: "Rótulos",
+      section: "Rotulos",
       order: 2,
       display: "select",
       values: [
         { "Nenhum": "none" },
-        { "% em Relação ao Topo (100%)": "top" },
-        { "% Conversão da Etapa Anterior": "previous" }
+        { "Em relação ao Topo (100%)": "top" },
+        { "Conversão da Etapa Anterior": "previous" }
       ],
       default: "top"
     },
@@ -48,20 +47,20 @@ looker.plugins.visualizations.add({
     },
     textColor: {
       type: "string",
-      label: "Cor das Legendas Externas",
-      section: "Cores",
-      order: 1,
+      label: "Cor das Legendas",
+      section: "Rotulos",
+      order: 3,
       display: "color",
       default: "#1F2937"
     }
   },
 
-  create: function(element: HTMLElement) {
+  create: function (element: HTMLElement) {
     element.innerHTML = '<div id="recharts-root" style="width: 100%; height: 100%;"></div>';
   },
 
-  updateAsync: function(data: any[], element: HTMLElement, config: any, queryResponse: any, details: any, done: () => void) {
-    if (typeof this.clearErrors === 'function') this.clearErrors();
+  updateAsync: function (data: any[], element: HTMLElement, config: any, queryResponse: any, details: any, done: () => void) {
+    // restante do seu updateAsync permanece idêntico...
 
     if (!queryResponse || !queryResponse.fields || !queryResponse.fields.dimensions.length || !queryResponse.fields.measures.length) {
       if (typeof this.addError === 'function') {
