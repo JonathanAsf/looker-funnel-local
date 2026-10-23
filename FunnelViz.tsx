@@ -13,14 +13,22 @@ export interface FunnelItem {
   value: number;
   fill: string;
   formattedValue?: string;
+  pctOfTop: string;
+  pctOfPrev: string;
+}
+
+interface VizConfig {
+  labelPosition: 'right' | 'left' | 'none';
+  percentType: 'top' | 'previous' | 'none';
+  showInnerValues: boolean;
+  textColor: string;
 }
 
 interface FunnelVizProps {
   data: FunnelItem[];
-  isAnimationActive?: boolean;
+  config: VizConfig;
 }
 
-// Tooltip customizado para exibir o valor e a proporção face ao topo
 const CustomTooltip = ({ active, payload }: TooltipProps<number, string>) => {
   if (active && payload && payload.length) {
     const item = payload[0].payload as FunnelItem;
@@ -41,85 +49,88 @@ const CustomTooltip = ({ active, payload }: TooltipProps<number, string>) => {
         <p style={{ margin: '4px 0 0', color: '#4B5563', fontSize: '12px' }}>
           Total: <strong>{item.formattedValue || item.value.toLocaleString()}</strong>
         </p>
+        <p style={{ margin: '2px 0 0', color: '#6B7280', fontSize: '11px' }}>
+          Do topo: <strong>{item.pctOfTop}</strong> | Da anterior: <strong>{item.pctOfPrev}</strong>
+        </p>
       </div>
     );
   }
   return null;
 };
 
-export const FunnelViz: React.FC<FunnelVizProps> = ({
-  data,
-  isAnimationActive = true
-}) => {
+export const FunnelViz: React.FC<FunnelVizProps> = ({ data, config }) => {
   if (!data || data.length === 0) {
-    return (
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '100%',
-          color: '#6B7280',
-          fontFamily: 'sans-serif'
-        }}
-      >
-        Sem dados para apresentar.
-      </div>
-    );
+    return <div style={{ padding: 20, textAlign: 'center', color: '#888' }}>Sem dados</div>;
   }
 
+  // Monta o rótulo da legenda dependendo da opção de percentual escolhida
+  const formatOuterLabel = (entry: any) => {
+    const item = entry as FunnelItem;
+    if (config.percentType === 'top') {
+      return `${item.name} (${item.pctOfTop})`;
+    }
+    if (config.percentType === 'previous') {
+      return `${item.name} (${item.pctOfPrev})`;
+    }
+    return item.name;
+  };
+
+  const hasLeftLabel = config.labelPosition === 'left';
+  const hasRightLabel = config.labelPosition === 'right';
+
   return (
-    <div
-      style={{
-        width: '100%',
-        height: '100%',
-        minHeight: '420px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        boxSizing: 'border-box'
-      }}
-    >
-      <ResponsiveContainer width="100%" height="100%" minHeight={400}>
+    <div style={{ width: '100%', height: '100%', minHeight: '450px' }}>
+      <ResponsiveContainer width="100%" height="100%">
         <FunnelChart
           margin={{
             top: 20,
-            right: 120,
+            right: hasRightLabel ? 160 : 30,
             bottom: 20,
-            left: 20
+            left: hasLeftLabel ? 160 : 30
           }}
         >
           <Tooltip content={<CustomTooltip />} />
-          <Funnel
-            dataKey="value"
-            data={data}
-            isAnimationActive={isAnimationActive}
-          >
-            {/* Rótulo com o nome da etapa à direita do trapézio */}
-            <LabelList
-              position="right"
-              fill="#1F2937"
-              stroke="none"
-              dataKey="name"
-              style={{
-                fontSize: '13px',
-                fontWeight: 600,
-                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-              }}
-            />
-            {/* Rótulo com o valor formatado impresso dentro de cada secção */}
-            <LabelList
-              position="center"
-              fill="#FFFFFF"
-              stroke="none"
-              dataKey="value"
-              formatter={(val: number) => val.toLocaleString()}
-              style={{
-                fontSize: '12px',
-                fontWeight: 700,
-                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-              }}
-            />
+          <Funnel dataKey="value" data={data} isAnimationActive={true}>
+            {/* Números no centro da fatia */}
+            {config.showInnerValues && (
+              <LabelList
+                position="center"
+                fill="#FFFFFF"
+                stroke="none"
+                dataKey="formattedValue"
+                style={{
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  fontFamily: 'sans-serif'
+                }}
+              />
+            )}
+
+            {/* Legenda Externa com percentual */}
+            {config.labelPosition !== 'none' && (
+              <LabelList
+                position={config.labelPosition}
+                fill={config.textColor}
+                stroke="none"
+                content={({ x, y, stroke, value, ...rest }: any) => {
+                  const item = rest.payload as FunnelItem;
+                  const text = formatOuterLabel(item);
+                  return (
+                    <text
+                      x={x}
+                      y={y}
+                      fill={config.textColor}
+                      fontSize="12"
+                      fontWeight="600"
+                      dominantBaseline="middle"
+                      textAnchor={config.labelPosition === 'left' ? 'end' : 'start'}
+                    >
+                      {text}
+                    </text>
+                  );
+                }}
+              />
+            )}
           </Funnel>
         </FunnelChart>
       </ResponsiveContainer>
