@@ -47,20 +47,19 @@ const CustomTooltip = ({ active, payload }: TooltipProps<number, string>) => {
         <p
           style={{
             margin: 0,
-            fontWeight: 600,
+            fontWeight: 700,
             color: "#1F2937",
-            fontSize: "13px",
+            fontSize: "14px",
           }}
         >
           {item.name}
         </p>
         <p style={{ margin: "4px 0 0", color: "#4B5563", fontSize: "12px" }}>
-          Total:{" "}
+          Volume:{" "}
           <strong>{item.formattedValue || item.value.toLocaleString()}</strong>
         </p>
-        <p style={{ margin: "2px 0 0", color: "#6B7280", fontSize: "11px" }}>
-          Do topo: <strong>{item.pctOfTop}</strong> | Da anterior:{" "}
-          <strong>{item.pctOfPrev}</strong>
+        <p style={{ margin: "2px 0 0", color: "#6B7280", fontSize: "12px" }}>
+          Proporção: <strong>{item.pctOfTop}</strong>
         </p>
       </div>
     );
@@ -77,21 +76,21 @@ export const FunnelViz: React.FC<FunnelVizProps> = ({ data, config }) => {
     );
   }
 
-  const formatText = (item: FunnelItem) => {
-    if (config.percentType === "top") {
-      return `${item.name} (${item.pctOfTop})`;
-    }
-    if (config.percentType === "previous") {
-      return `${item.name} (${item.pctOfPrev})`;
-    }
-    return item.name;
-  };
-
   const isLeft = config.labelPosition === "left";
   const isRight = config.labelPosition === "right";
   const showLabels = config.labelPosition !== "none";
 
-  // Coluna de legendas calculada dinamicamente
+  // Formata o que vai aparecer na coluna lateral (Porcentagem + Valor)
+  const getSideText = (item: FunnelItem) => {
+    const pct =
+      config.percentType === "previous" ? item.pctOfPrev : item.pctOfTop;
+    return {
+      percentage: pct,
+      rawValue: item.formattedValue || item.value.toLocaleString(),
+    };
+  };
+
+  // Coluna lateral que agora mostra a PORCENTAGEM em evidência e o valor bruto
   const LabelsColumn = (
     <div
       style={{
@@ -99,38 +98,37 @@ export const FunnelViz: React.FC<FunnelVizProps> = ({ data, config }) => {
         flexDirection: "column",
         justifyContent: "space-around",
         height: "100%",
-        minWidth: "220px",
-        maxWidth: "320px",
+        minWidth: "180px",
+        maxWidth: "240px",
         padding: "16px 12px",
         boxSizing: "border-box",
         textAlign: isLeft ? "right" : "left",
       }}
     >
-      {data.map((item, idx) => (
-        <div
-          key={idx}
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            overflow: "hidden",
-            whiteSpace: "nowrap",
-            textOverflow: "ellipsis",
-          }}
-        >
-          <span
+      {data.map((item, idx) => {
+        const { percentage, rawValue } = getSideText(item);
+        return (
+          <div
+            key={idx}
             style={{
-              color: config.textColor || "#1F2937",
-              fontSize: "13px",
-              fontWeight: 600,
-              fontFamily:
-                "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
             }}
-            title={item.name}
           >
-            {formatText(item)}
-          </span>
-          {config.percentType !== "none" && (
+            {/* Porcentagem em evidência */}
+            <span
+              style={{
+                color: config.textColor || "#1F2937",
+                fontSize: "16px",
+                fontWeight: 700,
+                fontFamily:
+                  "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+              }}
+            >
+              {percentage}
+            </span>
+            {/* Valor numérico bruto menor abaixo da porcentagem */}
             <span
               style={{
                 fontSize: "11px",
@@ -140,13 +138,11 @@ export const FunnelViz: React.FC<FunnelVizProps> = ({ data, config }) => {
                   "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
               }}
             >
-              {config.percentType === "top"
-                ? `${item.pctOfTop} do início`
-                : `${item.pctOfPrev} da etapa anterior`}
+              {rawValue} ocorrências
             </span>
-          )}
-        </div>
-      ))}
+          </div>
+        );
+      })}
     </div>
   );
 
@@ -155,7 +151,7 @@ export const FunnelViz: React.FC<FunnelVizProps> = ({ data, config }) => {
       style={{
         width: "100%",
         height: "100%",
-        minHeight: "450px",
+        minHeight: "480px",
         display: "flex",
         flexDirection: "row",
         justifyContent: "center",
@@ -164,41 +160,43 @@ export const FunnelViz: React.FC<FunnelVizProps> = ({ data, config }) => {
         padding: "10px 20px",
       }}
     >
-      {/* Se for Esquerda, a coluna de textos entra antes do gráfico */}
+      {/* Coluna de Porcentagem à Esquerda */}
       {showLabels && isLeft && LabelsColumn}
 
-      {/* Área central com o funil Recharts */}
+      {/* Funil Central com o NOME DA ETAPA em evidência dentro da fatia */}
       <div
         style={{
           flex: 1,
           maxWidth: "750px",
           height: "100%",
-          minHeight: "450px",
+          minHeight: "480px",
         }}
       >
         <ResponsiveContainer width="100%" height="100%">
           <FunnelChart margin={{ top: 20, right: 10, bottom: 20, left: 10 }}>
             <Tooltip content={<CustomTooltip />} />
             <Funnel dataKey="value" data={data} isAnimationActive={false}>
-              {config.showInnerValues && (
-                <LabelList
-                  position="center"
-                  fill="#FFFFFF"
-                  stroke="none"
-                  dataKey="formattedValue"
-                  style={{
-                    fontSize: "13px",
-                    fontWeight: 700,
-                    fontFamily: "sans-serif",
-                  }}
-                />
-              )}
+              {/* O NOME DA ETAPA (ex: Clicked, Sent, Read) fica em evidência no centro da fatia */}
+              <LabelList
+                position="center"
+                fill="#FFFFFF"
+                stroke="none"
+                dataKey="name"
+                style={{
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  letterSpacing: "0.5px",
+                  textShadow: "0 1px 2px rgba(0,0,0,0.4)",
+                  fontFamily:
+                    "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                }}
+              />
             </Funnel>
           </FunnelChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Se for Direita, a coluna de textos entra depois do gráfico */}
+      {/* Coluna de Porcentagem à Direita */}
       {showLabels && isRight && LabelsColumn}
     </div>
   );

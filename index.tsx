@@ -14,7 +14,7 @@ looker.plugins.visualizations.add({
   options: {
     labelPosition: {
       type: "string",
-      label: "Posição dos Rótulos",
+      label: "Posição das Porcentagens",
       section: "Rotulos",
       order: 1,
       display: "select",
@@ -27,27 +27,19 @@ looker.plugins.visualizations.add({
     },
     percentType: {
       type: "string",
-      label: "Cálculo de Porcentagem",
+      label: "Base da Porcentagem",
       section: "Rotulos",
       order: 2,
       display: "select",
       values: [
-        { "Nenhum": "none" },
         { "Em relação ao Topo (100%)": "top" },
         { "Conversão da Etapa Anterior": "previous" }
       ],
       default: "top"
     },
-    showInnerValues: {
-      type: "boolean",
-      label: "Exibir Números Dentro do Funil",
-      section: "Valores",
-      order: 1,
-      default: true
-    },
     textColor: {
       type: "string",
-      label: "Cor das Legendas",
+      label: "Cor das Porcentagens Laterais",
       section: "Rotulos",
       order: 3,
       display: "color",
@@ -60,7 +52,7 @@ looker.plugins.visualizations.add({
   },
 
   updateAsync: function (data: any[], element: HTMLElement, config: any, queryResponse: any, details: any, done: () => void) {
-    // restante do seu updateAsync permanece idêntico...
+    if (typeof this.clearErrors === 'function') this.clearErrors();
 
     if (!queryResponse || !queryResponse.fields || !queryResponse.fields.dimensions.length || !queryResponse.fields.measures.length) {
       if (typeof this.addError === 'function') {
@@ -75,16 +67,26 @@ looker.plugins.visualizations.add({
     const dimName = queryResponse.fields.dimensions[0].name;
     const measureName = queryResponse.fields.measures[0].name;
 
+    // Se houver uma 2ª medida ou cálculo de tabela com %, usamos ela diretamente
+    const tableCalcMeasure = queryResponse.fields.table_calculations?.[0]?.name;
+
     const topValue = data.length > 0 ? (Number(data[0][measureName]?.value) || 0) : 0;
 
-    // Constrói os dados calculando os percentuais dinamicamente
+    // Constrói os dados
     const chartData = data.map((row, index) => {
-      const name = LookerCharts?.Utils?.textForCell(row[dimName]) || row[dimName]?.value || 'Sem rótulo';
+      let rawName = LookerCharts?.Utils?.textForCell(row[dimName]) || row[dimName]?.value;
+      if (!rawName || rawName === 'null' || rawName === 'Ø') {
+        rawName = 'Não identificado';
+      }
+
       const value = Number(row[measureName]?.value) || 0;
       const formattedValue = LookerCharts?.Utils?.textForCell(row[measureName]) || value.toLocaleString();
 
-      // % em relação ao topo
-      const pctOfTop = topValue > 0 ? ((value / topValue) * 100).toFixed(1) + '%' : '0%';
+      // % em relação ao topo (ou lê do table calculation se existir)
+      let pctOfTop = topValue > 0 ? ((value / topValue) * 100).toFixed(1) + '%' : '0%';
+      if (tableCalcMeasure && row[tableCalcMeasure]) {
+        pctOfTop = LookerCharts?.Utils?.textForCell(row[tableCalcMeasure]) || pctOfTop;
+      }
 
       // % em relação à etapa anterior
       let pctOfPrev = '100%';
@@ -94,7 +96,7 @@ looker.plugins.visualizations.add({
       }
 
       return {
-        name,
+        name: rawName,
         value,
         formattedValue,
         pctOfTop,
@@ -115,7 +117,7 @@ looker.plugins.visualizations.add({
         config={{
           labelPosition: config.labelPosition || 'right',
           percentType: config.percentType || 'top',
-          showInnerValues: config.showInnerValues !== false,
+          showInnerValues: true,
           textColor: config.textColor || '#1F2937'
         }}
       />
